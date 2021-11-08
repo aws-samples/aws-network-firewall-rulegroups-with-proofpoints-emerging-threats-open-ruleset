@@ -1,0 +1,292 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  anf_suricata_rules_ingestion
+
+  Sample SAM Template for anf_suricata_rules_ingestion
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Parameters:
+  SuricataRulesetVersion: 
+    Type: String
+    Description: "
+    Suricata Release version number. Scripts were tested with 5.0.6 and 6.0.2 versions released Mar2021. 
+    "
+    Default: "6.0.2"
+  SuricataRulesetDownloadUrl: 
+    Type: String
+    Description: "
+    Suricata Ruleset Download Url. VERSION keyword will be replaced by the Suricata_Ruleset_Version variable during processing. 
+    "
+    Default: "https://rules.emergingthreats.net/open/suricata-VERSION/emerging.rules.tar.gz"
+  SuricataUpdateCheckUrl:
+    Type: String
+    Description: "
+    Suricata Ruleset Update check url. Value at this url will be updated when there is an update to ruleset.  
+    Refer - https://rules.emergingthreats.net/OPEN_download_instructions.html
+    "
+    Default: "https://rules.emergingthreats.net/version.txt"
+  DNSSERVERS: 
+    Type: String
+    Description: "
+    List of DNS Servers specific to your environment. Format is important - comma separated array/list without spaces. 
+    Can be changed later in Lambda Environment Variables
+    "
+    Default: "[4,4,4,4]"
+  HTTPSERVERS: 
+    Type: String
+    Description: "
+    List of HTTP Servers / ALBs specific to your environment. Format is important - comma separated array/list without spaces. 
+    Can be changed later in Lambda Environment Variables. Can also be complete vpc cidr range to check against all ips 
+    "
+    Default: "[10.0.0.0/16]"
+  HTTPPORTS: 
+    Type: String
+    Description: "
+    List of HTTP Ports specific to your environment. Format is important - comma separated array/list without spaces. 
+    Can be changed later in Lambda Environment Variables
+    "
+    Default: "[80,443,8080]"
+  DownloaderSchedule:
+    Type: String
+    Description: "
+    Daily Downloader schedule. Default every 6 hrs. Supports Cloudformation cron schedule expressions"
+    Default: "rate(6 hours)"
+  
+
+Globals:
+  Function:
+    Timeout: 900
+
+Resources:
+  NetworkFirewallRuleGroupCrudPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: anf-rulegroup-crud-policy
+      PolicyDocument: 
+        Version: 2012-10-17
+        Statement: 
+          - Effect: Allow
+            Action: 
+              - network-firewall:DescribeRuleGroup
+              - network-firewall:CreateRuleGroup
+              - network-firewall:UpdateRuleGroup
+              - network-firewall:ListRuleGroups
+              - network-firewall:UpdateFirewallPolicy
+              - network-firewall:CreateeFirewallPolicy
+              - network-firewall:DeleteFirewallPolicy
+              - network-firewall:ListFirewallPolicy
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - ssm:PutParameter
+              - ssm:DeleteParameter
+              - ssm:GetParameterHistory
+              - ssm:GetParametersByPath
+              - ssm:GetParameters
+              - ssm:GetParameter
+              - ssm:DeleteParameters
+            Resource: 
+              - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${SuricataRulesetUpdateCheckSSMParam}"
+              - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${ConvertRuleGroupIDStoIPSSSMParam}"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W13
+            reason: "Allow * in resource Need access to all RuleGroups "
+          - id: W28
+            reason: "Ignore explicit name usage for policyname"
+            
+  ANFIngestSuricataRulesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ANFSuricataRulesProcessor
+      CodeUri: ingest_suricata_rules/
+      Handler: rules_processor.lambda_handler
+      Runtime: python3.8
+      Environment:
+        Variables:
+          DNS_SERVERS: !Ref DNSSERVERS
+          HTTP_SERVERS: !Ref HTTPSERVERS
+          HTTP_PORTS: !Ref HTTPPORTS
+          ConvertRuleGroupIDStoIPSSSMParam: !Ref ConvertRuleGroupIDStoIPSSSMParam
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub "anf-suricata-rules-${AWS::Region}-${AWS::AccountId}"
+        - !Ref NetworkFirewallRuleGroupCrudPolicy
+      Events:
+        ObjectCreated:
+          Type: S3
+          Properties:
+            Bucket: !Ref ANFSuricataRulesBucket
+            Events: 's3:ObjectCreated:*'
+            Filter:
+              S3Key:
+                Rules:
+                - Name: prefix      
+                  Value: "extracted/rules/emerging" # if you change this folder in lambda update the trigger
+                - Name: suffix
+                  Value: ".rules"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Lambda function does not need any vpc resource access and independent of vpc config"
+          - id: W92
+            reason: "Lambda function does not need ReservedConcurrentExecutions"
+  
+  ANFConvertIDStoIPSFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ANFConvertIDStoIPS
+      CodeUri: ingest_suricata_rules/
+      Handler: convert_ids_ips.lambda_handler
+      Runtime: python3.8
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub "anf-suricata-rules-${AWS::Region}-${AWS::AccountId}"
+        - !Ref NetworkFirewallRuleGroupCrudPolicy
+      Events:
+        ObjectCreated:
+          Type: S3
+          Properties:
+            Bucket: !Ref ANFSuricataRulesBucket
+            Events: 's3:ObjectCreated:*'
+            Filter:
+              S3Key:
+                Rules:
+                - Name: prefix      
+                  Value: "extracted/ids_to_ips/suricata"
+                - Name: suffix
+                  Value: ".rules"
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Lambda function does not need any vpc resource access and independent of vpc config"
+          - id: W92
+            reason: "Lambda function does not need ReservedConcurrentExecutions"
+  
+
+
+
+  SuricataRulesDownloaderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ANFSuricataRulesDownloader
+      CodeUri: ingest_suricata_rules/
+      Handler: rules_downloader.lambda_handler
+      Runtime: python3.8
+      Environment:
+        Variables:
+          SuricataRulesetVersion: !Ref SuricataRulesetVersion
+          SuricataUpdateCheckUrl: !Ref SuricataUpdateCheckUrl
+          SuricataRulesetDownloadUrl: !Ref SuricataRulesetDownloadUrl
+          SuricataRulesBucket: !Ref ANFSuricataRulesBucket
+          SuricataRulesetUpdateCheckSSMParam: !Ref SuricataRulesetUpdateCheckSSMParam
+      Events:
+        CheckRuleset:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref DownloaderSchedule # Runs every 6 hrs default
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub "anf-suricata-rules-${AWS::Region}-${AWS::AccountId}"
+        - !Ref NetworkFirewallRuleGroupCrudPolicy
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Lambda function does not need any vpc resource access and independent of vpc config"
+          - id: W92
+            reason: "Lambda function does not need ReservedConcurrentExecutions"
+
+  RuleGroupSummaryReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ANFSuricataRuleGroupSummaryReport
+      CodeUri: ingest_suricata_rules/
+      Handler: summary_report.lambda_handler
+      Runtime: python3.8
+      Environment:
+        Variables:
+          SuricataRulesetVersion: !Ref SuricataRulesetVersion
+          SuricataUpdateCheckUrl: !Ref SuricataUpdateCheckUrl
+          SuricataRulesetDownloadUrl: !Ref SuricataRulesetDownloadUrl
+          SuricataRulesBucket: !Ref ANFSuricataRulesBucket
+          SuricataRulesetUpdateCheckSSMParam: !Ref SuricataRulesetUpdateCheckSSMParam
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Sub "anf-suricata-rules-${AWS::Region}-${AWS::AccountId}"
+        - !Ref NetworkFirewallRuleGroupCrudPolicy
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: "Lambda function does not need any vpc resource access and independent of vpc config"
+          - id: W92
+            reason: "Lambda function does not need ReservedConcurrentExecutions"
+  SuricataRulesetUpdateCheckSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: SuricataRulesetUpdateCheck
+      Type: String
+      Value: "1"
+      Description: "Suricata Ruleset Update Version Check"
+  ConvertRuleGroupIDStoIPSSSMParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: ConvertRuleGroupIDStoIPS
+      Type: String
+      Value: " "
+      Description: "Add comma separated (no spaces) suricata IDS rulegroups to convert and create/update IPS rulegroups"
+  ANFSuricataRulesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "anf-suricata-rules-${AWS::Region}-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: "S3 Bucket access logging not required for this bucket"
+
+  ANFSuricataRulesBucketPolicy:
+    DependsOn:
+      - ANFSuricataRulesBucket
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref ANFSuricataRulesBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+            Condition:
+              Bool:
+                'aws:SecureTransport': false
+            Effect: Deny
+            Principal: '*'
+            Resource: !Sub 'arn:${AWS::Partition}:s3:::${ANFSuricataRulesBucket}/*'
+            Sid: DenyUnencryptedConnections
+Outputs:
+  ANFIngestSuricataRulesFunction:
+    Description: "ANFIngestSuricataRulesFunction Lambda Function ARN"
+    Value: !GetAtt ANFIngestSuricataRulesFunction.Arn
+  ANFSuricataRulesBucket:
+    Description: "S3 Bucket where rules and processed files are stored"
+    Value: !Ref ANFSuricataRulesBucket
+  RuleGroupSummaryReportFunction:
+    Description: "ANF RuleGroup Summary for Suricata Rules "
+    Value: !GetAtt RuleGroupSummaryReportFunction.Arn
+  SuricataRulesDownloaderFunction:
+    Description: "Lambda Function ARN to Download Suricata Rules from suricata portal "
+    Value: !GetAtt SuricataRulesDownloaderFunction.Arn

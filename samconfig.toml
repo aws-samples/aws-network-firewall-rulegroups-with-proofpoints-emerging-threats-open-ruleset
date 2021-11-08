@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "anf-suricata-parser"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-8wgpej2psjc5"
+s3_prefix = "anf-suricata-parser"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+parameter_overrides = "SuricataRulesetVersion=\"6.0.2\" SuricataRulesetDownloadUrl=\"https://rules.emergingthreats.net/open/suricata-VERSION/emerging.rules.tar.gz\" SuricataUpdateCheckUrl=\"https://rules.emergingthreats.net/version.txt\" DNSSERVERS=\"[4.4.4.4]\" HTTPSERVERS=\"[10.0.0.0/16]\" HTTPPORTS=\"[80,443,8080]\" DownloaderSchedule=\"rate(6 hours)\""
