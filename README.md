@@ -1,4 +1,4 @@
-## My Project
+The repository prvoides automation that is necessary to parse the Proofpoints emerging threats rule sets to AWS Network Firewall rulegroups. 
 
 ## Prerequisites
 
@@ -8,9 +8,6 @@
 
 ## Note
 The solution creates approximately 60 rulegroups from Proof Point's emerging threats open rule set. Incorporate only the rulegroups that fits your use case in the firewall policy. 
-
-
-
 
 ## Solution Components
 
@@ -43,7 +40,6 @@ Most parameters can be left default and can be modified later from the lambda en
 * **DNSSERVERS:** List of your local DNS servers or VPC provided DNS servers
 * **HTTPSERVERS:** List of HTTP endpoints within your environment or you may specify the complete VPC CIDR range
 * **DownloaderSchedule:** Default downloader schedule is to run every 6 hrs, however the rule groups are updated only if there is an updated ruleset version. **** 
-
 
 **Sample screenshots**
 
@@ -110,7 +106,13 @@ The **ANFSuricataRulesProcessor** lambda saves the rulesets under “Applied”,
 ![Image: s3folderstructure.png](images/s3bucketfolders.png)
 Figure 3 : S3 bucket with rulesets actions
 
+## Cleanup
 
+To avoid ongoing charges, delete the resources created. Go to AWS Management console : 
+
+* Identify the s3 bucket created as part of the cloudformation stack and empty the bucket. 
+* Once the bucket is emptied, identity and delete the cloudformation stack created by the deployment. 
+* Identify and delete all AWS Network Firewall rulegroups starting with “suricata-emerging” name prefix. 
 
 ## Security
 
