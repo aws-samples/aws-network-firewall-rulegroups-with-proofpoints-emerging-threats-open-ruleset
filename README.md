@@ -97,6 +97,12 @@ Building codeuri: <truncated>
 ![Image: Rulegroups](images/rulegroups.png)
 Figure 2 : AWS Network Firewall Rule groups based on Emerging Threats
 
+## Convert IDS to IPS ruleset
+All rulesets released by Proofpoint Emerging threats are based on IDS and by default our solution creates  IDS rulegroups. These rulegroups have an action=“alert” while IPS rulegropus will action=“drop”. We also provide you with a helper lambda function that can create IPS rulegroups based out the default IDS rulegroups that are created. In order to create IPS rulegroups: add comma separated list of IDS rulegroup names to ConvertRuleGroupIDStoIPS in the SSM Parameter.  
+
+Example: If the value of SSM Paramter **ConvertRuleGroupIDStoIPS** is set to “suricata-emerging-dns,suricata-emerging-dos”, then two additional ips rulegroups ips-suricata-emerging-dns,ips-suricata-emerging-dos on next scheduled run. These IPS rulegroups can be added to firewall policy similar to IDS rulegroups.  
+
+The SSM Parameter value can be updated at any time after first run.
 
 ## Troubleshooting
 
