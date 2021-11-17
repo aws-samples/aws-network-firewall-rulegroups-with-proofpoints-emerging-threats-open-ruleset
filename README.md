@@ -114,6 +114,11 @@ To avoid ongoing charges, delete the resources created. Go to AWS Management con
 * Once the bucket is emptied, identity and delete the cloudformation stack created by the deployment. 
 * Identify and delete all AWS Network Firewall rulegroups starting with “suricata-emerging” name prefix. 
 
+
+## Code Owners
+* Shiva Vaidyanathan
+* Lakshmikanth Pandre
+
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
