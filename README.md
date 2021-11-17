@@ -1,4 +1,4 @@
-The repository prvoides automation that is necessary to parse the Proofpoints emerging threats rule sets to AWS Network Firewall rulegroups. 
+The repository provides automation that is necessary to parse the [Proofpoints emerging threats rule sets](https://rules.emergingthreats.net/open/suricata/rules/) to AWS Network Firewall rulegroups. 
 
 ## Prerequisites
 
