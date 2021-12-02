@@ -13,7 +13,7 @@ The solution creates approximately 60 rulegroups from Proof Point's emerging thr
 
 ## Solution Components
 
-![Image: ANF_Suricata_Rule_Ingestion_Workflow.png](images/ANF_Suricata_Rule_Ingestion_Workflow.png)
+![Image: ANF_Suricata_Rule_Ingestion_Workflow.png](images/ANF_Suricata_Rule_Ingestion_Workflow.png)  
 Figure 1 : Suricata Rules Ingestion Workflow
 
 Our solution will deploy the following components
