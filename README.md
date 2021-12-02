@@ -1,3 +1,5 @@
+# Ingest Proofpoint emerging threat rule sets into AWS Network Firewall Rulegroups
+
 The repository provides automation that is necessary to parse the [Proofpoints emerging threats rule sets](https://rules.emergingthreats.net/open/suricata/rules/) to AWS Network Firewall rulegroups. 
 
 ## Prerequisites
@@ -10,6 +12,9 @@ The repository provides automation that is necessary to parse the [Proofpoints e
 The solution creates approximately 60 rulegroups from Proof Point's emerging threats open rule set. Incorporate only the rulegroups that fits your use case in the firewall policy. 
 
 ## Solution Components
+
+![Image: ANF_Suricata_Rule_Ingestion_Workflow.png](images/ANF_Suricata_Rule_Ingestion_Workflow.png)
+Figure 1 : Suricata Rules Ingestion Workflow
 
 Our solution will deploy the following components
 
@@ -39,7 +44,7 @@ Most parameters can be left default and can be modified later from the lambda en
 
 * **DNSSERVERS:** List of your local DNS servers or VPC provided DNS servers
 * **HTTPSERVERS:** List of HTTP endpoints within your environment or you may specify the complete VPC CIDR range
-* **DownloaderSchedule:** Default downloader schedule is to run every 6 hrs, however the rule groups are updated only if there is an updated ruleset version. **** 
+* **DownloaderSchedule:** Default downloader schedule is to run every 6 hrs, however the rule groups are updated only if there is an updated ruleset version. 
 
 **Sample screenshots**
 
@@ -89,7 +94,7 @@ Building codeuri: <truncated>
 ```
 
 5. Validate the CloudFormation stack is deployed successfully by logging into the AWS console. The solution is triggered at a 6hour interval by default. To trigger it manually, create a test event by navigating to lambda service in the console.  
-6. Select **ANFSuricataRulesDownloader** function. Click on Test button on the drop-down and choose **Configure test events**. Select hello-world template and save as “test”. Click the Test icon to start the lambda job. This will trigger the workflow described in figure1.
+6. Select **ANFSuricataRulesDownloader** function. Click on Test button on the drop-down and choose **Configure test events**. Select hello-world template and save as “test”. Click the Test icon to start the lambda job. This will trigger the workflow described in Figure 1.
 7. The ANFSuricataRulesProcessor will create 50+ rule groups under normal circumstances. The rule groups are ready to be associated to your AWS Network Firewall policy based on your specific requirements. 
 8. To do this, navigate to the VPC service in AWS console. Select Network Firewall Policy on the left. Select the appropriate rule groups that are required and add them to the policy. Click Save. An example screenshot of different rule groups created via our solution is shown below in Figure 2.  
 
@@ -100,7 +105,7 @@ Figure 2 : AWS Network Firewall Rule groups based on Emerging Threats
 ## Convert IDS to IPS ruleset
 All rulesets released by Proofpoint Emerging threats are based on IDS and by default our solution creates  IDS rulegroups. These rulegroups have an action=“alert” while IPS rulegroups will have an action=“drop”. We also provide you with a helper lambda function that can create IPS rulegroups based out the default IDS rulegroups that are created. In order to create IPS rulegroups: add comma separated list of IDS rulegroup names to ConvertRuleGroupIDStoIPS in the SSM Parameter.  
 
-Example: If the value of SSM Paramter **ConvertRuleGroupIDStoIPS** is set to “suricata-emerging-dns,suricata-emerging-dos”, then two additional ips rulegroups ips-suricata-emerging-dns,ips-suricata-emerging-dos on next scheduled run. These IPS rulegroups can be added to firewall policy similar to IDS rulegroups. Please ensure to test and validate with IDS rulegroups before applying IPS rulegroups to firewall policy. 
+Example: If the value of SSM Parameter **ConvertRuleGroupIDStoIPS** is set to “suricata-emerging-dns,suricata-emerging-dos”, then two additional ips rulegroups ips-suricata-emerging-dns,ips-suricata-emerging-dos on next scheduled run. These IPS rulegroups can be added to firewall policy similar to IDS rulegroups. Please ensure to test and validate with IDS rulegroups before applying IPS rulegroups to firewall policy. 
 
 The SSM Parameter value can be updated at any time after first run.
 
@@ -122,8 +127,9 @@ To avoid ongoing charges, delete the resources created. Go to AWS Management con
 
 
 ## Code Owners
-* Shiva Vaidyanathan
+
 * Lakshmikanth Pandre
+* Shiva Vaidyanathan
 
 ## Security
 
