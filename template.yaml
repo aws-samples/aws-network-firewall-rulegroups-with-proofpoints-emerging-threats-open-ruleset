@@ -68,14 +68,19 @@ Resources:
         Statement: 
           - Effect: Allow
             Action: 
-              - network-firewall:DescribeRuleGroup
+              - network-firewall:DeleteRuleGroup
               - network-firewall:CreateRuleGroup
+              - network-firewall:DescribeRuleGroupMetadata
+              - network-firewall:DeleteFirewallPolicy
               - network-firewall:UpdateRuleGroup
               - network-firewall:ListRuleGroups
+              - network-firewall:DescribeRuleGroup
+              - network-firewall:DescribeFirewallPolicy
+              - network-firewall:ListFirewalls
               - network-firewall:UpdateFirewallPolicy
-              - network-firewall:CreateeFirewallPolicy
-              - network-firewall:DeleteFirewallPolicy
-              - network-firewall:ListFirewallPolicy
+              - network-firewall:DescribeResourcePolicy
+              - network-firewall:CreateFirewallPolicy
+              - network-firewall:ListFirewallPolicies
             Resource: "*"
           - Effect: Allow
             Action:
